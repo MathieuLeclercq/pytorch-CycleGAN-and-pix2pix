@@ -170,6 +170,7 @@ class CycleGANModel(BaseModel):
         lambda_idt = self.opt.lambda_identity
         lambda_A = self.opt.lambda_A
         lambda_B = self.opt.lambda_B
+        lambda_shape = self.opt.lambda_shape
         # Identity loss
         if lambda_idt > 0:
             # G_A should be identity if real_B is fed: ||G_A(B) - B||
@@ -191,13 +192,19 @@ class CycleGANModel(BaseModel):
         # Backward cycle loss || G_A(G_B(B)) - B||
         self.loss_cycle_B = self.criterionCycle(self.rec_B, self.real_B) * lambda_B
         # combined loss and calculate gradients
-        self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B
+        self.loss_G = (self.loss_G_A + self.loss_G_B +
+                       self.loss_cycle_A + self.loss_cycle_B +
+                       self.loss_idt_A + self.loss_idt_B)
 
         # Shape-consistency loss with adjusted threshold for mask
         real_A_mask = (self.real_A > 0.001).type(torch.float)
         fake_B_mask = (self.fake_B > 0.001).type(torch.float)
-        self.loss_shape = self.dice_loss(fake_B_mask, real_A_mask) * self.opt.lambda_shape
-        self.loss_G += self.loss_shape
+        # Ensure masks have requires_grad=True
+        real_A_mask.requires_grad = True
+        fake_B_mask.requires_grad = True
+
+        self.loss_shape = self.dice_loss(fake_B_mask, real_A_mask) * lambda_shape
+        # self.loss_G += self.loss_shape
 
         self.loss_G.backward()
 
@@ -219,8 +226,11 @@ class CycleGANModel(BaseModel):
 
     @staticmethod
     def dice_loss(inputs, target):
+        assert inputs.requires_grad, "inputs tensor does not require grad"
+        assert target.requires_grad, "target tensor does not require grad"
         smooth = 1.0  # Smoothing factor to avoid division by zero
         iflat = inputs.view(-1)
         tflat = target.view(-1)
         intersection = (iflat * tflat).sum()
-        return 1 - ((2. * intersection + smooth) / (iflat.sum() + tflat.sum() + smooth))
+        loss = 1 - ((2. * intersection + smooth) / (iflat.sum() + tflat.sum() + smooth))
+        return loss

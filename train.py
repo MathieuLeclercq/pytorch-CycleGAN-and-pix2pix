@@ -40,6 +40,7 @@ if __name__ == '__main__':
         iter_data_time = time.time()
         epoch_iter = 0
         visualizer.reset()
+        shape_losses = []
         for i, data in enumerate(dataset):
             iter_start_time = time.time()
             if total_iters % opt.print_freq == 0:
@@ -49,6 +50,8 @@ if __name__ == '__main__':
             epoch_iter += opt.batch_size
             model.set_input(data)
             model.optimize_parameters()  # First update network weights
+            losses = model.get_current_losses()
+            shape_losses.append(losses['shape'])
 
             if total_iters % opt.display_freq == 0:
                 save_result = total_iters % opt.update_html_freq == 0
@@ -57,6 +60,11 @@ if __name__ == '__main__':
 
             if total_iters % opt.print_freq == 0:
                 losses = model.get_current_losses()
+                print(losses)
+                avg_shape_loss = sum(shape_losses) / len(shape_losses)
+                print('\n\nshape loss: ', avg_shape_loss)
+                losses['shape'] = avg_shape_loss
+                shape_losses = []
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 visualizer.print_current_losses(epoch, epoch_iter, losses, t_comp, t_data)
                 if opt.display_id > 0:

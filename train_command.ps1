@@ -20,10 +20,11 @@ python train.py --dataroot $dataroot `
                 --gpu_ids 0 `
                 --checkpoints_dir $checkpoints_dir `
                 --load_size 256 `
+                --netG resnet_9blocks `
                 --input_nc 1 `
                 --output_nc 1 `
-                -- preprocess none `
+                --preprocess none `
                 --lambda_A 10 `
                 --lambda_B 3 `
-                --lambda_identity 1 `
+                --lambda_identity 2 `
                 --lambda_shape 15
